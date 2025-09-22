@@ -1,0 +1,5 @@
+streamlit
+seleniumbase
+beautifulsoup4
+pandas
+openpyxl
