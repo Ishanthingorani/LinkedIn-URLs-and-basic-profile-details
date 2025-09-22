@@ -1,5 +1,5 @@
-streamlit
-seleniumbase
-beautifulsoup4
-pandas
-openpyxl
+streamlit==1.28.0
+pandas==2.1.0
+requests==2.32.0
+beautifulsoup4==4.12.2
+openpyxl==3.1.2
