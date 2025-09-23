@@ -10,7 +10,7 @@ import os
 import time
 
 # === CONFIGURE YOUR LOCAL CHROMEDRIVER PATH ===
-chrome_driver_path = r"C:\Users\HP\Downloads\chromedriver-win32 (2)\chromedriver-win32\chromedriver.exe"
+chrome_driver_path = r"C:\chromedriver-win32\chromedriver.exe"
 service = Service(chrome_driver_path)
 
 chrome_options = webdriver.ChromeOptions()
