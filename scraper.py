@@ -4,12 +4,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-import time
 import pandas as pd
+import time
 
 def init_driver():
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")  # Headless mode
+    options.add_argument("--headless=new")  # Headless Chrome
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--incognito")
@@ -44,14 +44,13 @@ def scrape_company(driver, company_name):
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
 
-        # Scroll to load content
         for _ in range(5):
             driver.execute_script("window.scrollBy(0,1000);")
             time.sleep(1)
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
         return extract_data(soup, company_name)
-    except Exception as e:
+    except:
         return {"Company Name": company_name, "Industry": None, "Company Size": None}
 
 def scrape_company_list(company_list):
