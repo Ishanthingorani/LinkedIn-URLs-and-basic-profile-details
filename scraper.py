@@ -1,58 +1,63 @@
-# scraper_playwright.py
-
-import pandas as pd
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
 import time
-from playwright.sync_api import sync_playwright
+import pandas as pd
 
-def scrape_company(page, company_name):
+def init_driver():
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless=new")  # Headless mode
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--incognito")
+    options.add_argument("--window-size=1920,1080")
+    driver = webdriver.Chrome(options=options)
+    return driver
+
+def extract_data(soup, company_name):
+    industry, size = None, None
     try:
-        # Google search
-        page.goto("https://www.google.com/")
-        page.fill("input[name='q']", f"{company_name} linkedin")
-        page.press("input[name='q']", "Enter")
-        page.wait_for_timeout(3000)
+        for dt in soup.find_all("dt"):
+            if "Industry" in dt.text:
+                industry = dt.find_next("dd").text.strip() if dt.find_next("dd") else None
+            elif "Company size" in dt.text:
+                size = dt.find_next("dd").text.strip() if dt.find_next("dd") else None
+    except:
+        pass
+    return {"Company Name": company_name, "Industry": industry, "Company Size": size}
 
-        # Click first result
-        page.click("h3", timeout=5000)
+def scrape_company(driver, company_name):
+    try:
+        driver.get("https://www.google.com")
+        search_box = driver.find_element(By.NAME, "q")
+        search_box.send_keys(f"{company_name} site:linkedin.com/company/")
+        search_box.send_keys(Keys.RETURN)
 
-        # Wait for LinkedIn page
-        page.wait_for_load_state("networkidle")
+        first_result = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div.yuRUbf > a"))
+        )
+        first_result.click()
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
 
-        # Scroll a bit to load dynamic content
-        for _ in range(3):
-            page.mouse.wheel(0, 2000)
+        # Scroll to load content
+        for _ in range(5):
+            driver.execute_script("window.scrollBy(0,1000);")
             time.sleep(1)
 
-        # Extract info
-        industry = page.locator("div[data-test-id='about-us__industry'] dd").inner_text(timeout=2000) if page.locator("div[data-test-id='about-us__industry'] dd").count() > 0 else "Not Found"
-        size = page.locator("div[data-test-id='about-us__size'] dd").inner_text(timeout=2000) if page.locator("div[data-test-id='about-us__size'] dd").count() > 0 else "Not Found"
-
-        return {"Company Name": company_name, "Industry": industry, "Company Size": size}
-
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        return extract_data(soup, company_name)
     except Exception as e:
-        print(f"Error scraping {company_name}: {e}")
-        return {"Company Name": company_name, "Industry": "Error", "Company Size": "Error"}
+        return {"Company Name": company_name, "Industry": None, "Company Size": None}
 
-
-def run_scraper(input_file, output_file):
-    df = pd.read_excel(f"./Input_file/{input_file}.xlsx")
-
-    if "Company_name" not in df.columns:
-        print("❌ Input file must contain a 'Company_name' column")
-        return
-
-    company_list = df["Company_name"].dropna().unique()
+def scrape_company_list(company_list):
+    driver = init_driver()
     results = []
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)  # headless mode
-        page = browser.new_page()
-
-        for company in company_list:
-            results.append(scrape_company(page, company))
-
-        browser.close()
-
-    output_df = pd.DataFrame(results)
-    output_df.to_excel(f"./Output_file/{output_file}.xlsx", index=False)
-    print(f"✅ Scraping finished. File saved: ./Output_file/{output_file}.xlsx")
+    for company in company_list:
+        results.append(scrape_company(driver, company))
+    driver.quit()
+    return pd.DataFrame(results)
